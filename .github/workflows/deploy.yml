@@ -2,29 +2,36 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ] # Kích hoạt mỗi khi có code đẩy lên nhánh main
+    branches: [ "main" ]
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest # Chạy trên máy ảo Ubuntu
+    runs-on: ubuntu-latest
 
     steps:
-    # 1. Action lấy code từ Github
     - name: Bước 1 - Checkout mã nguồn
       uses: actions/checkout@v4
 
-    # 2. Action Đăng nhập Docker Hub
+    # --- PHẦN BỔ SUNG: Dạy robot build ra file .jar trước ---
+    - name: Cài đặt JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Build dự án bằng Maven
+      run: chmod +x mvnw && ./mvnw clean package -DskipTests
+    # --------------------------------------------------------
+
     - name: Bước 2 - Đăng nhập Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # 3. Action Đóng gói & Đẩy Image
     - name: Bước 3 - Build và Push Image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        # Đặt tên image của bạn tại đây
         tags: ${{ secrets.DOCKER_USERNAME }}/demo-spring-boot:latest
