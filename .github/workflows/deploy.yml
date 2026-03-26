@@ -11,8 +11,7 @@ jobs:
     steps:
     - name: Bước 1 - Checkout mã nguồn
       uses: actions/checkout@v4
-
-    # --- PHẦN BỔ SUNG: Dạy robot build ra file .jar trước ---
+    
     - name: Cài đặt JDK 21
       uses: actions/setup-java@v4
       with:
@@ -21,7 +20,6 @@ jobs:
 
     - name: Build dự án bằng Maven
       run: chmod +x mvnw && ./mvnw clean package -DskipTests
-    # --------------------------------------------------------
 
     - name: Bước 2 - Đăng nhập Docker Hub
       uses: docker/login-action@v3
@@ -35,3 +33,23 @@ jobs:
         context: .
         push: true
         tags: ${{ secrets.DOCKER_USERNAME }}/demo-spring-boot:latest
+
+    - name: Triển khai lên DevOps Classroom
+      run: |
+        REPO="thanhnam3636/demo-spring-boot"
+        CONTAINER_PORT=80
+        RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "${{ secrets.DEPLOY_URL }}?repo=$REPO&tag=latest&slot=3&container_port=$CONTAINER_PORT")
+        BODY=$(echo "$RESPONSE" | sed "$d")
+        CODE=$(echo "$RESPONSE" | tail -n1)
+        echo "Webhook HTTP: $CODE"
+        if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
+          echo "Deploy thất bại. Xem chi tiết trong nhóm log bên dưới."
+          echo "::group::Chi tiết webhook JSON"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+          echo "::endgroup::"
+          exit 1
+        fi
+        echo "Deploy thành công."
+        echo "::group::Chi tiết webhook JSON"
+        echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+        echo "::endgroup::"
